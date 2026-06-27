@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TradeVision - Platform Trading Pro</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Three.js for 3D Background -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#0b0e14',
+                        cardBg: '#151a23',
+                        bullish: '#00ff88',
+                        bearish: '#ff3366',
+                        accent: '#3b82f6'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0b0e14;
+            color: #ffffff;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+        .glass {
+            background: rgba(21, 26, 35, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0e14;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1f2937;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3b82f6;
+        }
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            z-index: -1;
+            overflow: hidden;
+        }
+        .hero-text-shadow {
+            text-shadow: 0px 4px 20px rgba(0, 255, 136, 0.3);
+        }
+        /* Iframe scroll fix for investing.com */
+        .investing-widget {
+            border-radius: 12px;
+            overflow: hidden;
+            background: #ffffff; /* Investing default bg */
+        }
+    </style>
+</head>
+<body class="antialiased selection:bg-accent selection:text-white">
+
+    <!-- Navbar -->
+    <nav class="fixed w-full z-50 glass border-b border-gray-800 transition-all duration-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex-shrink-0 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-line text-bullish text-2xl"></i>
+                    <span class="font-bold text-xl tracking-wider">Trade<span class="text-bullish">Vision</span></span>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-8">
+                        <a href="#home" class="hover:text-bullish px-3 py-2 rounded-md text-sm font-medium transition-colors">Beranda</a>
+                        <a href="#kalkulator" class="hover:text-bullish px-3 py-2 rounded-md text-sm font-medium transition-colors">Kalkulator</a>
+                        <a href="#news" class="hover:text-bullish px-3 py-2 rounded-md text-sm font-medium transition-colors">News</a>
+                        <a href="#indikator" class="hover:text-bullish px-3 py-2 rounded-md text-sm font-medium transition-colors">Indikator</a>
+                    </div>
+                </div>
+                <div class="md:hidden flex items-center">
+                    <button id="mobile-menu-btn" class="text-gray-300 hover:text-white focus:outline-none">
+                        <i class="fa-solid fa-bars text-2xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="hidden md:hidden glass border-t border-gray-800">
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                <a href="#home" class="block hover:text-bullish px-3 py-2 rounded-md text-base font-medium">Beranda</a>
+                <a href="#kalkulator" class="block hover:text-bullish px-3 py-2 rounded-md text-base font-medium">Kalkulator</a>
+                <a href="#news" class="block hover:text-bullish px-3 py-2 rounded-md text-base font-medium">News</a>
+                <a href="#indikator" class="block hover:text-bullish px-3 py-2 rounded-md text-base font-medium">Indikator</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- LIVE TICKER TAPE (Visual Harga Naik/Turun) -->
+    <div class="fixed top-16 w-full z-40 border-b border-gray-800">
+        <!-- TradingView Widget BEGIN -->
+        <div class="tradingview-widget-container">
+            <div class="tradingview-widget-container__widget"></div>
+            <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
+            {
+            "symbols": [
+                { "proName": "FX_IDC:EURUSD", "title": "EUR/USD" },
+                { "proName": "FX_IDC:GBPUSD", "title": "GBP/USD" },
+                { "proName": "FX_IDC:USDJPY", "title": "USD/JPY" },
+                { "proName": "OANDA:XAUUSD", "title": "XAU/USD" },
+                { "proName": "FX_IDC:AUDUSD", "title": "AUD/USD" },
+                { "proName": "FX_IDC:USDCAD", "title": "USD/CAD" }
+            ],
+            "showSymbolLogo": true,
+            "colorTheme": "dark",
+            "isTransparent": false,
+            "displayMode": "adaptive",
+            "locale": "id"
+            }
+            </script>
+        </div>
+        <!-- TradingView Widget END -->
+    </div>
+
+    <!-- SECTION: HOME (3D Hero) -->
+    <section id="home" class="relative h-screen flex items-center justify-center pt-24">
+        <div id="canvas-container"></div>
+        <div class="relative z-10 text-center px-4 max-w-4xl mx-auto">
+            <div class="inline-block px-4 py-1 rounded-full bg-gray-800/50 border border-gray-700 text-sm text-gray-300 mb-6 backdrop-blur-sm">
+                <i class="fa-solid fa-circle text-bullish text-[10px] animate-pulse mr-2"></i> Sistem Live & Up-to-date
+            </div>
+            <h1 class="text-5xl md:text-7xl font-extrabold mb-6 tracking-tight hero-text-shadow">
+                Navigasi Pasar <br> Dengan <span class="text-transparent bg-clip-text bg-gradient-to-r from-bullish to-accent">Presisi Tinggi</span>
+            </h1>
+            <p class="text-lg md:text-xl text-gray-400 mb-10 max-w-2xl mx-auto">
+                Platform cerdas dengan sentimen teknikal real-time, kalender ekonomi live, dan manajemen risiko ala trader profesional.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="#kalkulator" class="px-8 py-3 rounded-lg bg-bullish text-darkBg font-bold hover:bg-green-400 transition-all shadow-[0_0_15px_rgba(0,255,136,0.4)]">
+                    Kalkulator Lot <i class="fa-solid fa-arrow-right ml-2"></i>
+                </a>
+                <a href="#indikator" class="px-8 py-3 rounded-lg glass font-semibold hover:bg-gray-800 transition-all">
+                    Lihat Sentimen Pasar
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION: KALKULATOR -->
+    <section id="kalkulator" class="py-24 bg-darkBg relative z-10 border-t border-gray-900">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">Kalkulator <span class="text-accent">Risiko Pro</span></h2>
+                <p class="text-gray-400 max-w-2xl mx-auto">Hitung ukuran Lot dengan akurat. Mendukung pasangan mata uang Major (Standard Contract 100k) dan XAUUSD.</p>
+            </div>
+
+            <div class="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Form -->
+                <div class="cardBg p-8 rounded-2xl border border-gray-800 shadow-xl">
+                    <form id="risk-form" onsubmit="event.preventDefault(); hitungLot();">
+                        <div class="mb-5">
+                            <label class="block text-sm font-medium text-gray-400 mb-2">Pilih Instrumen</label>
+                            <select id="calc-pair" onchange="updateForm()" class="w-full bg-darkBg border border-gray-700 rounded-lg px-4 py-3 focus:outline-none focus:border-accent text-white">
+                                <!-- Base USD pairs (Pip Value tetap $10) -->
+                                <optgroup label="USD sebagai Quote (Pip Value Tetap)">
+                                    <option value="eurusd">EUR/USD</option>
+                                    <option value="gbpusd">GBP/USD</option>
+                                    <option value="audusd">AUD/USD</option>
+                                    <option value="nzdusd">NZD/USD</option>
+                                    <option value="xauusd">XAU/USD (Gold)</option>
+                                </optgroup>
+                                <!-- Quote USD pairs (Pip Value dinamis) -->
+                                <optgroup label="USD sebagai Base (Pip Value Dinamis)">
+                                    <option value="usdjpy">USD/JPY</option>
+                                    <option value="usdchf">USD/CHF</option>
+                                    <option value="usdcad">USD/CAD</option>
+                                </optgroup>
+                            </select>
+                        </div>
+
+                        <!-- Harga Saat Ini (Hidden by default, shown for USD Base pairs) -->
+                        <div id="current-price-div" class="mb-5 hidden">
+                            <label class="block text-sm font-medium text-gray-400 mb-2">Harga Pasar Saat Ini (Bid/Ask)</label>
+                            <input type="number" id="calc-price" min="0.0001" step="any" placeholder="Cth: 150.50 (JPY) atau 0.9000 (CHF)" class="w-full bg-darkBg border border-gray-700 rounded-lg px-4 py-3 focus:outline-none focus:border-accent text-white">
+                            <p class="text-xs text-gray-500 mt-1">*Dibutuhkan untuk menghitung nilai pip yang akurat karena USD di depan.</p>
+                        </div>
+
+                        <div class="mb-5">
+                            <label class="block text-sm font-medium text-gray-400 mb-2">Saldo Akun (USD)</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-500">$</span>
+                                <input type="number" id="calc-balance" required min="1" step="any" placeholder="1000" class="w-full bg-darkBg border border-gray-700 rounded-lg pl-8 pr-4 py-3 focus:outline-none focus:border-accent text-white">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 mb-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-400 mb-2">Risiko (%)</label>
+                                <div class="relative">
+                                    <input type="number" id="calc-risk" required min="0.1" max="100" step="0.1" placeholder="1" class="w-full bg-darkBg border border-gray-700 rounded-lg px-4 py-3 focus:outline-none focus:border-accent text-white">
+                                    <span class="absolute inset-y-0 right-0 flex items-center pr-4 text-gray-500">%</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-400 mb-2">Stop Loss (Pips)</label>
+                                <input type="number" id="calc-sl" required min="1" step="0.1" placeholder="30" class="w-full bg-darkBg border border-gray-700 rounded-lg px-4 py-3 focus:outline-none focus:border-accent text-white">
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full bg-accent hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+                            Hitung Lot Sekarang
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Result -->
+                <div class="cardBg p-8 rounded-2xl border border-gray-800 shadow-xl flex flex-col justify-center items-center text-center relative overflow-hidden">
+                    <div class="absolute -top-10 -right-10 w-32 h-32 bg-accent opacity-10 rounded-full blur-2xl"></div>
+                    <div class="absolute -bottom-10 -left-10 w-32 h-32 bg-bullish opacity-10 rounded-full blur-2xl"></div>
+                    
+                    <h3 class="text-xl text-gray-400 mb-2">Ukuran Lot Ideal Anda</h3>
+                    <div id="lot-result" class="text-6xl font-extrabold text-white my-6">0.00 <span class="text-2xl text-gray-500 font-normal">Lot</span></div>
+                    
+                    <div class="w-full bg-darkBg rounded-lg p-5 text-left mt-4 border border-gray-700">
+                        <div class="flex justify-between mb-3 pb-3 border-b border-gray-800">
+                            <span class="text-gray-400">Modal Diresikokan:</span>
+                            <span id="risk-amount-result" class="text-bearish font-bold text-lg">$0.00</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Nilai Per Pip (1 Lot):</span>
+                            <span id="pip-value-result" class="text-bullish font-bold">$0.00</span>
+                        </div>
+                    </div>
+                    <p id="calc-error" class="text-bearish text-sm mt-4 hidden bg-red-900/20 p-2 rounded w-full"></p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION: NEWS (Kalender & FXStreet Mockup) -->
+    <section id="news" class="py-24 bg-[#0e1219]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="mb-12">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">Berita & <span class="text-bullish">Kalender Ekonomi</span></h2>
+                <p class="text-gray-400">Pantau sentimen fundamental dan jadwal rilis data penting dari Investing.com.</p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Market News (FXStreet Styled) -->
+                <div class="lg:col-span-1 space-y-4">
+                    <h3 class="text-xl font-bold text-white border-l-4 border-accent pl-3 mb-6">Latest FX News</h3>
+                    
+                    <a href="#" class="block cardBg p-4 rounded-xl border border-gray-800 hover:border-gray-600 transition-all group">
+                        <div class="flex items-center gap-2 text-xs text-bullish font-bold mb-2">
+                            <i class="fa-solid fa-bolt"></i> BREAKING
+                        </div>
+                        <h4 class="font-bold text-gray-200 group-hover:text-accent transition-colors mb-2">Dolar AS Melemah Jelang Rilis Data CPI Inti</h4>
+                        <p class="text-sm text-gray-500 line-clamp-2">Para pelaku pasar berhati-hati menjelang rilis inflasi yang dapat menentukan arah kebijakan The Fed selanjutnya.</p>
+                        <div class="text-xs text-gray-600 mt-3"><i class="fa-regular fa-clock"></i> 10 Menit lalu &bull; via FXStreet</div>
+                    </a>
+
+                    <a href="#" class="block cardBg p-4 rounded-xl border border-gray-800 hover:border-gray-600 transition-all group">
+                        <h4 class="font-bold text-gray-200 group-hover:text-accent transition-colors mb-2">Harga Emas (XAU/USD) Tertahan di Resisten $2,050</h4>
+                        <p class="text-sm text-gray-500 line-clamp-2">Ketegangan geopolitik mereda sementara, membuat Emas kesulitan menembus area resisten krusial mingguan.</p>
+                        <div class="text-xs text-gray-600 mt-3"><i class="fa-regular fa-clock"></i> 1 Jam lalu &bull; via FXStreet</div>
+                    </a>
+
+                    <a href="#" class="block cardBg p-4 rounded-xl border border-gray-800 hover:border-gray-600 transition-all group">
+                        <h4 class="font-bold text-gray-200 group-hover:text-accent transition-colors mb-2">Analisis EUR/USD: Tekanan Jual Masih Dominan di Sesi Eropa</h4>
+                        <p class="text-sm text-gray-500 line-clamp-2">Data PMI manufaktur Jerman yang mengecewakan kembali membebani mata uang tunggal Euro hari ini.</p>
+                        <div class="text-xs text-gray-600 mt-3"><i class="fa-regular fa-clock"></i> 3 Jam lalu &bull; via FXStreet</div>
+                    </a>
+                </div>
+
+                <!-- Economic Calendar (Investing.com) -->
+                <div class="lg:col-span-2">
+                    <h3 class="text-xl font-bold text-white border-l-4 border-bullish pl-3 mb-6">Jadwal Rilis Mendatang (Investing.com)</h3>
+                    <div class="investing-widget w-full h-[500px]">
+                        <!-- Investing.com Iframe -->
+                        <iframe src="https://sslecal2.investing.com?columns=exc_flags,exc_currency,exc_importance,exc_actual,exc_forecast,exc_previous&features=datepicker,timezone&countries=25,32,6,37,72,22,17,39,14,10,35,43,56,36,110,11,26,12,4,5&calType=week&timeZone=18&lang=1" width="100%" height="100%" frameborder="0" allowtransparency="true" marginwidth="0" marginheight="0"></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION: INDIKATOR NEWS (REAL-TIME SENTIMENT) -->
+    <section id="indikator" class="py-24 bg-darkBg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">Indikator <span class="text-bearish">Sentimen Live</span></h2>
+                <p class="text-gray-400 max-w-2xl mx-auto">Analisis teknikal *real-time* yang merangkum sinyal dari Moving Averages, Osilator (RSI, MACD), dan indikator lainnya.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                
+                <!-- XAUUSD Widget -->
+                <div class="cardBg border border-gray-800 rounded-xl overflow-hidden h-[450px]">
+                    <div class="tradingview-widget-container">
+                        <div class="tradingview-widget-container__widget"></div>
+                        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js" async>
+                        {
+                        "interval": "1D",
+                        "width": "100%",
+                        "isTransparent": true,
+                        "height": "100%",
+                        "symbol": "OANDA:XAUUSD",
+                        "showIntervalTabs": true,
+                        "locale": "id",
+                        "colorTheme": "dark"
+                        }
+                        </script>
+                    </div>
+                </div>
+
+                <!-- EURUSD Widget -->
+                <div class="cardBg border border-gray-800 rounded-xl overflow-hidden h-[450px]">
+                    <div class="tradingview-widget-container">
+                        <div class="tradingview-widget-container__widget"></div>
+                        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js" async>
+                        {
+                        "interval": "1D",
+                        "width": "100%",
+                        "isTransparent": true,
+                        "height": "100%",
+                        "symbol": "FX:EURUSD",
+                        "showIntervalTabs": true,
+                        "locale": "id",
+                        "colorTheme": "dark"
+                        }
+                        </script>
+                    </div>
+                </div>
+
+                <!-- GBPUSD Widget -->
+                <div class="cardBg border border-gray-800 rounded-xl overflow-hidden h-[450px]">
+                    <div class="tradingview-widget-container">
+                        <div class="tradingview-widget-container__widget"></div>
+                        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js" async>
+                        {
+                        "interval": "1D",
+                        "width": "100%",
+                        "isTransparent": true,
+                        "height": "100%",
+                        "symbol": "FX:GBPUSD",
+                        "showIntervalTabs": true,
+                        "locale": "id",
+                        "colorTheme": "dark"
+                        }
+                        </script>
+                    </div>
+                </div>
+
+                <!-- USDJPY Widget -->
+                <div class="cardBg border border-gray-800 rounded-xl overflow-hidden h-[450px]">
+                    <div class="tradingview-widget-container">
+                        <div class="tradingview-widget-container__widget"></div>
+                        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js" async>
+                        {
+                        "interval": "1D",
+                        "width": "100%",
+                        "isTransparent": true,
+                        "height": "100%",
+                        "symbol": "FX:USDJPY",
+                        "showIntervalTabs": true,
+                        "locale": "id",
+                        "colorTheme": "dark"
+                        }
+                        </script>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-[#080b10] py-10 border-t border-gray-900">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center md:text-left grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div>
+                <div class="flex items-center justify-center md:justify-start gap-2 mb-4">
+                    <i class="fa-solid fa-chart-line text-bullish text-2xl"></i>
+                    <span class="font-bold text-xl tracking-wider">Trade<span class="text-bullish">Vision</span></span>
+                </div>
+                <p class="text-sm text-gray-500">Memberikan alat canggih dan data akurat untuk keputusan trading Anda.</p>
+            </div>
+            <div>
+                <h4 class="font-bold text-white mb-4">Tautan</h4>
+                <ul class="text-sm text-gray-500 space-y-2">
+                    <li><a href="#kalkulator" class="hover:text-white transition">Kalkulator Risiko</a></li>
+                    <li><a href="#news" class="hover:text-white transition">Berita & Kalender</a></li>
+                    <li><a href="#indikator" class="hover:text-white transition">Indikator Teknikal Live</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="font-bold text-white mb-4">Peringatan Risiko</h4>
+                <p class="text-xs text-gray-600">Trading Foreign Exchange (Forex) dan Komoditas menggunakan leverage membawa tingkat risiko yang tinggi. Data dari widget eksternal seperti TradingView & Investing.com disediakan "as is".</p>
+            </div>
+        </div>
+        <div class="text-center text-gray-700 text-sm mt-10">
+            &copy; 2024 TradeVision. All rights reserved.
+        </div>
+    </footer>
+
+    <!-- Logic Script -->
+    <script>
+        // --- 1. Mobile Menu Toggle ---
+        const btn = document.getElementById('mobile-menu-btn');
+        const menu = document.getElementById('mobile-menu');
+        btn.addEventListener('click', () => {
+            menu.classList.toggle('hidden');
+        });
+
+        // --- 2. Risk Calculator Pro Logic ---
+        function updateForm() {
+            const pair = document.getElementById('calc-pair').value;
+            const priceDiv = document.getElementById('current-price-div');
+            const priceInput = document.getElementById('calc-price');
+            
+            // Jika pair menggunakan USD sebagai Base (di depan), tampilkan kolom input harga
+            if (['usdjpy', 'usdchf', 'usdcad'].includes(pair)) {
+                priceDiv.classList.remove('hidden');
+                priceInput.required = true;
+            } else {
+                priceDiv.classList.add('hidden');
+                priceInput.required = false;
+                priceInput.value = ''; // Reset
+            }
+        }
+
+        function hitungLot() {
+            const errorMsg = document.getElementById('calc-error');
+            errorMsg.classList.add('hidden');
+
+            const pair = document.getElementById('calc-pair').value;
+            const balance = parseFloat(document.getElementById('calc-balance').value);
+            const risk = parseFloat(document.getElementById('calc-risk').value);
+            const sl = parseFloat(document.getElementById('calc-sl').value);
+            const currentPrice = parseFloat(document.getElementById('calc-price').value);
+
+            if (isNaN(balance) || isNaN(risk) || isNaN(sl) || balance <= 0 || risk <= 0 || sl <= 0) {
+                errorMsg.innerText = "Error: Masukkan angka saldo, risiko, dan SL yang valid (> 0).";
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+
+            // Validasi khusus untuk pair yg butuh harga saat ini
+            if (['usdjpy', 'usdchf', 'usdcad'].includes(pair)) {
+                if (isNaN(currentPrice) || currentPrice <= 0) {
+                    errorMsg.innerText = "Error: Anda harus memasukkan Harga Pasar Saat Ini untuk instrumen ini.";
+                    errorMsg.classList.remove('hidden');
+                    return;
+                }
+            }
+
+            // Hitung Uang yang diresikokan
+            const riskAmount = balance * (risk / 100);
+            
+            // Perhitungan Pip Value berdasarkan Standar Lot (100,000 unit base currency)
+            let pipValuePerLot = 10; // Default untuk pasangan XXX/USD (EURUSD, GBPUSD dll) dan XAUUSD
+            
+            if (pair === 'usdjpy') {
+                // Untuk JPY, 1 pip = 0.01. Nilai 1 pip = (0.01 / Exchange Rate) * 100,000
+                pipValuePerLot = (0.01 / currentPrice) * 100000;
+            } else if (['usdchf', 'usdcad'].includes(pair)) {
+                // Untuk mata uang 4 desimal, 1 pip = 0.0001. Nilai = (0.0001 / Exchange Rate) * 100,000
+                pipValuePerLot = (0.0001 / currentPrice) * 100000;
+            }
+
+            // Hitung ukuran Lot
+            let lotSize = riskAmount / (sl * pipValuePerLot);
+
+            // Format Output
+            document.getElementById('lot-result').innerHTML = `${lotSize.toFixed(2)} <span class="text-2xl text-gray-500 font-normal">Lot</span>`;
+            document.getElementById('risk-amount-result').innerText = `$${riskAmount.toFixed(2)}`;
+            document.getElementById('pip-value-result').innerText = `$${pipValuePerLot.toFixed(2)}`;
+        }
+
+        // --- 3. Three.js 3D Background Logic ---
+        window.addEventListener('load', () => {
+            init3D();
+        });
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 25;
+            camera.position.y = 5;
+            
+            const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            const geometry = new THREE.IcosahedronGeometry(12, 1);
+            const material = new THREE.MeshBasicMaterial({ 
+                color: 0x00ff88, 
+                wireframe: true,
+                transparent: true,
+                opacity: 0.15
+            });
+            const globe = new THREE.Mesh(geometry, material);
+            
+            const coreGeometry = new THREE.IcosahedronGeometry(11.8, 1);
+            const coreMaterial = new THREE.MeshBasicMaterial({
+                color: 0x0b0e14,
+                transparent: true,
+                opacity: 0.8
+            });
+            const core = new THREE.Mesh(coreGeometry, coreMaterial);
+
+            const particlesGeometry = new THREE.BufferGeometry();
+            const particlesCount = 700;
+            const posArray = new Float32Array(particlesCount * 3);
+            
+            for(let i = 0; i < particlesCount * 3; i++) {
+                posArray[i] = (Math.random() - 0.5) * 60;
+            }
+            
+            particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            const particlesMaterial = new THREE.PointsMaterial({
+                size: 0.05,
+                color: 0x3b82f6,
+                transparent: true,
+                opacity: 0.6
+            });
+            const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
+
+            scene.add(globe);
+            scene.add(core);
+            scene.add(particlesMesh);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            const clock = new THREE.Clock();
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsedTime = clock.getElapsedTime();
+                globe.rotation.y = elapsedTime * 0.05;
+                globe.rotation.x = elapsedTime * 0.02;
+                particlesMesh.rotation.y = elapsedTime * 0.02;
+                renderer.render(scene, camera);
+            }
+            animate();
+        }
+    </script>
+</body>
+</html>
